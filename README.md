@@ -1,5 +1,13 @@
 # BANKING_BRANCH_PERFORMANCE_ANALYTICS
 # 🏦 Banking Branch Performance Analytics
+## 🚀 Live Dashboard
+
+**Explore the interactive dashboard:** [Banking Branch Performance Analytics](https://bankingbranchperformanceanalytics-iznjueoncuiuwqdqjl6wey.streamlit.app/)
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://bankingbranchperformanceanalytics-iznjueoncuiuwqdqjl6wey.streamlit.app/)
+
+Analyze banking deposit distribution, compare institutions and states, investigate market concentration, and explore business recommendations through an interactive Streamlit dashboard.
+
 
 ## 📌 Project Overview
 
