@@ -172,6 +172,157 @@ fig_institutions = px.bar(
 st.plotly_chart(fig_institutions, use_container_width=True)
 
 # --------------------------------------------------
+# 9. Market concentration analysis
+# --------------------------------------------------
+st.divider()
+st.subheader("📊 Market Concentration Analysis")
+
+st.write(
+    "The Herfindahl–Hirschman Index (HHI) measures how "
+    "concentrated deposits are among banking institutions "
+    "within each state. The Top-3 Share shows the percentage "
+    "of deposits held by the three largest institutions."
+)
+
+# Aggregate deposits by state and institution
+state_institution = (
+    filtered_df.groupby(["STALPBR", "CERT"], as_index=False)
+    .agg(Deposits=("DEPSUMBR", "sum"))
+)
+
+# Exclude institutions with no positive deposits
+state_institution = state_institution[
+    state_institution["Deposits"] > 0
+].copy()
+
+# Calculate each institution's share within its state
+state_institution["State_Total"] = (
+    state_institution.groupby("STALPBR")["Deposits"]
+    .transform("sum")
+)
+
+state_institution["Share_Percent"] = (
+    state_institution["Deposits"]
+    / state_institution["State_Total"] * 100
+)
+
+# HHI = sum of squared percentage shares
+state_institution["Share_Squared"] = (
+    state_institution["Share_Percent"] ** 2
+)
+
+hhi_by_state = (
+    state_institution.groupby("STALPBR", as_index=False)
+    .agg(HHI=("Share_Squared", "sum"))
+)
+
+# Calculate the top-three deposit share in each state
+top3_by_state = (
+    state_institution.sort_values(
+        ["STALPBR", "Deposits"],
+        ascending=[True, False]
+    )
+    .groupby("STALPBR")
+    .head(3)
+    .groupby("STALPBR", as_index=False)
+    .agg(Top3_Deposits=("Deposits", "sum"))
+)
+
+state_totals = (
+    state_institution.groupby("STALPBR", as_index=False)
+    .agg(Total_Deposits=("Deposits", "sum"))
+)
+
+concentration = (
+    state_totals
+    .merge(hhi_by_state, on="STALPBR")
+    .merge(top3_by_state, on="STALPBR")
+)
+
+concentration["Top3_Share_Percent"] = (
+    concentration["Top3_Deposits"]
+    / concentration["Total_Deposits"] * 100
+)
+
+# Descriptive screening categories, not legal conclusions
+concentration["HHI_Category"] = pd.cut(
+    concentration["HHI"],
+    bins=[-float("inf"), 1500, 2500, float("inf")],
+    labels=["Lower", "Moderate", "High"],
+    right=False
+)
+
+# Show the most concentrated states
+top_concentrated = concentration.sort_values(
+    "HHI", ascending=False
+).head(15)
+
+fig_hhi = px.bar(
+    top_concentrated.sort_values("HHI"),
+    x="HHI",
+    y="STALPBR",
+    color="HHI_Category",
+    color_discrete_map={
+        "Lower": "#2E86AB",
+        "Moderate": "#F6AE2D",
+        "High": "#D1495B"
+    },
+    orientation="h",
+    title="15 States with the Highest Deposit Concentration",
+    labels={
+        "STALPBR": "State",
+        "HHI": "Herfindahl–Hirschman Index",
+        "HHI_Category": "Screening category"
+    }
+)
+
+st.plotly_chart(fig_hhi, use_container_width=True)
+
+# Compare top-three shares
+top3_chart = concentration.sort_values(
+    "Top3_Share_Percent", ascending=False
+).head(15)
+
+fig_top3 = px.bar(
+    top3_chart.sort_values("Top3_Share_Percent"),
+    x="Top3_Share_Percent",
+    y="STALPBR",
+    color="Top3_Share_Percent",
+    color_continuous_scale="Viridis",
+    orientation="h",
+    title="Top-3 Institutions' Share of State Deposits",
+    labels={
+        "STALPBR": "State",
+        "Top3_Share_Percent": "Top-3 deposit share (%)"
+    }
+)
+
+st.plotly_chart(fig_top3, use_container_width=True)
+
+# Allow users to inspect exact results
+with st.expander("View market concentration results"):
+    display_concentration = concentration[
+        [
+            "STALPBR",
+            "Total_Deposits",
+            "HHI",
+            "HHI_Category",
+            "Top3_Share_Percent"
+        ]
+    ].sort_values("HHI", ascending=False)
+
+    st.dataframe(
+        display_concentration.round(2),
+        use_container_width=True
+    )
+
+st.caption(
+    "HHI categories are descriptive screening bands. "
+    "State-level concentration does not necessarily measure "
+    "competition in a local banking market."
+)
+
+# --------------------------------------------------
 # 9. Data preview
 # --------------------------------------------------
 with st.expander("🔎 Explore the dataset"):
