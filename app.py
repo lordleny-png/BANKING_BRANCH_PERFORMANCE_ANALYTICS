@@ -323,6 +323,154 @@ st.caption(
 )
 
 # --------------------------------------------------
+# 10. Deposit distribution and data quality
+# --------------------------------------------------
+st.divider()
+st.subheader("🔎 Deposit Distribution & Data Quality")
+
+st.write(
+    "Analyze the distribution of deposits across office records, "
+    "compare BRNUM groups, and identify unusual values requiring "
+    "further investigation."
+)
+
+# Create a working dataset
+distribution_df = filtered_df.copy()
+
+distribution_df["BRNUM_Group"] = distribution_df["BRNUM"].apply(
+    lambda x: "BRNUM = 0" if x == 0
+    else ("BRNUM != 0" if pd.notna(x) else "Unknown")
+)
+
+# Deposit amounts in millions of USD
+distribution_df["Deposits_Million"] = (
+    distribution_df["DEPSUMBR"] / 1000
+)
+
+# Summary indicators
+zero_deposits = (
+    distribution_df["DEPSUMBR"].fillna(0).eq(0).sum()
+)
+
+missing_deposits = distribution_df["DEPSUMBR"].isna().sum()
+
+positive_deposits = distribution_df[
+    distribution_df["DEPSUMBR"] > 0
+].copy()
+
+kpi1, kpi2, kpi3 = st.columns(3)
+
+kpi1.metric("Zero-Deposit Records", f"{zero_deposits:,}")
+kpi2.metric("Missing Deposit Values", f"{missing_deposits:,}")
+kpi3.metric("Positive-Deposit Records", f"{len(positive_deposits):,}")
+
+# Compare deposit distributions
+st.markdown("### Deposit Distribution by BRNUM Group")
+
+box_data = positive_deposits[
+    positive_deposits["BRNUM_Group"] != "Unknown"
+].copy()
+
+if not box_data.empty:
+    fig_box = px.box(
+        box_data,
+        x="BRNUM_Group",
+        y="Deposits_Million",
+        color="BRNUM_Group",
+        color_discrete_map={
+            "BRNUM = 0": "#2E86AB",
+            "BRNUM != 0": "#F6AE2D"
+        },
+        log_y=True,
+        points=False,
+        title="Deposit Distribution by BRNUM Group (Log Scale)",
+        labels={
+            "BRNUM_Group": "BRNUM group",
+            "Deposits_Million": "Deposits (USD millions)"
+        }
+    )
+
+    st.plotly_chart(fig_box, use_container_width=True)
+
+    st.caption(
+        "The logarithmic scale makes it easier to compare typical "
+        "deposit values when a few records are extremely large. "
+        "Zero deposits are excluded from this plot because log scales "
+        "cannot display zero."
+    )
+
+# Calculate group-level statistics
+st.markdown("### Group-Level Statistics")
+
+group_stats = (
+    distribution_df.groupby("BRNUM_Group", as_index=False)
+    .agg(
+        Record_Count=("UNINUMBR", "nunique"),
+        Median_Deposits=("DEPSUMBR", "median"),
+        Mean_Deposits=("DEPSUMBR", "mean"),
+        Zero_Deposit_Records=(
+            "DEPSUMBR",
+            lambda x: (x.fillna(0) == 0).sum()
+        )
+    )
+)
+
+# Convert deposit statistics from thousands to millions
+group_stats["Median_Deposits"] /= 1000
+group_stats["Mean_Deposits"] /= 1000
+
+group_stats = group_stats.rename(
+    columns={
+        "Median_Deposits": "Median (USD millions)",
+        "Mean_Deposits": "Mean (USD millions)"
+    }
+)
+
+st.dataframe(
+    group_stats.round(2),
+    use_container_width=True,
+    hide_index=True
+)
+
+# Investigate unusually large records
+st.markdown("### Largest Individual Office Records")
+
+top_records = (
+    distribution_df.sort_values("DEPSUMBR", ascending=False)
+    .head(10)
+    .copy()
+)
+
+top_records["Deposits (USD billions)"] = (
+    top_records["DEPSUMBR"] / 1_000_000
+)
+
+display_columns = [
+    "NAMEFULL",
+    "STALPBR",
+    "CITYBR",
+    "BRNUM",
+    "Deposits (USD billions)"
+]
+
+available_columns = [
+    col for col in display_columns if col in top_records.columns
+]
+
+st.dataframe(
+    top_records[available_columns].round(3),
+    use_container_width=True,
+    hide_index=True
+)
+
+st.caption(
+    "Large deposit records are not automatically errors. "
+    "Verify their meaning and reporting context before excluding them."
+)
+
+
+
+# --------------------------------------------------
 # 9. Data preview
 # --------------------------------------------------
 with st.expander("🔎 Explore the dataset"):
