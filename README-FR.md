@@ -109,4 +109,4 @@ L'analyse met en évidence plusieurs dimensions importantes du marché bancaire 
 
 ## ⚠️ Limites de l'analyse
 
-- L'analyse repose sur une extraction
+- L'analyse repose sur une extraction faite sur un periode specifique. Donc cela ne couvre pas une periode large.
