@@ -468,6 +468,148 @@ st.caption(
     "Verify their meaning and reporting context before excluding them."
 )
 
+# --------------------------------------------------
+# 11. State comparison and business recommendations
+# --------------------------------------------------
+st.divider()
+st.subheader("💼 State Comparison & Business Recommendations")
+
+# Summarize state-level performance indicators
+state_comparison = (
+    filtered_df.groupby("STALPBR", as_index=False)
+    .agg(
+        Total_Deposits=("DEPSUMBR", "sum"),
+        Institutions=("CERT", "nunique"),
+        Office_Records=("UNINUMBR", "nunique"),
+        Median_Deposits=("DEPSUMBR", "median")
+    )
+)
+
+# Convert deposits from thousands to millions or billions
+state_comparison["Total_Deposits_Billion"] = (
+    state_comparison["Total_Deposits"] / 1_000_000
+)
+
+state_comparison["Median_Deposits_Million"] = (
+    state_comparison["Median_Deposits"] / 1000
+)
+
+state_comparison = state_comparison.sort_values(
+    "Total_Deposits_Billion", ascending=False
+)
+
+# Display state comparison
+st.markdown("### State Comparison Table")
+
+st.dataframe(
+    state_comparison[
+        [
+            "STALPBR",
+            "Total_Deposits_Billion",
+            "Institutions",
+            "Office_Records",
+            "Median_Deposits_Million"
+        ]
+    ].rename(
+        columns={
+            "STALPBR": "State",
+            "Total_Deposits_Billion": "Total Deposits (USD billions)",
+            "Institutions": "Institutions",
+            "Office_Records": "Office Records",
+            "Median_Deposits_Million": "Median Deposits (USD millions)"
+        }
+    ).round(2),
+    use_container_width=True,
+    hide_index=True
+)
+
+# Compare total deposits across states
+st.markdown("### Total Deposits vs. Median Deposits")
+
+comparison_chart = px.scatter(
+    state_comparison,
+    x="Total_Deposits_Billion",
+    y="Median_Deposits_Million",
+    size="Office_Records",
+    color="Institutions",
+    hover_name="STALPBR",
+    color_continuous_scale="Turbo",
+    title="State Deposit Scale and Typical Office Size",
+    labels={
+        "Total_Deposits_Billion": "Total deposits (USD billions)",
+        "Median_Deposits_Million": "Median deposits (USD millions)",
+        "Institutions": "Number of institutions",
+        "Office_Records": "Office records"
+    }
+)
+
+st.plotly_chart(comparison_chart, use_container_width=True)
+
+st.caption(
+    "Each point represents a state. Bubble size reflects office records. "
+    "Total deposits measure scale, while median deposits describe a "
+    "typical record. Neither directly measures profitability."
+)
+
+# Business recommendations based on concentration metrics
+st.markdown("### Actionable Business Recommendations")
+
+if "concentration" in locals() and not concentration.empty:
+
+    selected_concentration = concentration[
+        concentration["STALPBR"].isin(selected_states)
+    ].copy()
+
+    if not selected_concentration.empty:
+
+        highest_hhi = selected_concentration.loc[
+            selected_concentration["HHI"].idxmax()
+        ]
+
+        lowest_hhi = selected_concentration.loc[
+            selected_concentration["HHI"].idxmin()
+        ]
+
+        st.markdown(
+            f"**1. Investigate the most concentrated state — "
+            f"{highest_hhi['STALPBR']}.** "
+            f"Its HHI is {highest_hhi['HHI']:.0f}. "
+            "Review which institutions account for the largest shares "
+            "and verify whether specialized deposit-booking arrangements "
+            "influence the result."
+        )
+
+        st.markdown(
+            f"**2. Use the least concentrated state — "
+            f"{lowest_hhi['STALPBR']} — as a comparison point.** "
+            f"Its HHI is {lowest_hhi['HHI']:.0f}. "
+            "Compare institution shares and local market conditions "
+            "before drawing conclusions about competition."
+        )
+
+        highest_top3 = selected_concentration.loc[
+            selected_concentration["Top3_Share_Percent"].idxmax()
+        ]
+
+        st.markdown(
+            f"**3. Monitor deposit dependence.** In "
+            f"{highest_top3['STALPBR']}, the three largest institutions "
+            f"hold {highest_top3['Top3_Share_Percent']:.1f}% of deposits. "
+            "Track this share over time to identify changes in concentration."
+        )
+
+else:
+    st.info(
+        "Concentration results are unavailable. Check the market "
+        "concentration section and its calculations."
+    )
+
+st.markdown(
+    "**4. Improve performance measurement.** Add branch operating costs, "
+    "customer counts, loan balances, transaction volumes, and profitability "
+    "data to assess efficiency rather than deposit size alone."
+)
+
 
 
 # --------------------------------------------------
