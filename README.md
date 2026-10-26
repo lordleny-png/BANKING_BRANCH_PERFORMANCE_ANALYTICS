@@ -139,6 +139,8 @@ Banking-Branch-Performance-Analytics/
 ├── requirements.txt
 ├── SOD_CustomDownload_2026_06_30 (1).csv
 └── README.md
+└── README-FR.md
+
 ```
 
 ## 👨‍💻 Author
